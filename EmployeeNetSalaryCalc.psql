@@ -1,0 +1,85 @@
+-- Create Employee table
+CREATE TABLE Employee (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    BasicPay DECIMAL(10,2) NOT NULL,
+    DOB DATE,
+    Dept VARCHAR(50)
+);
+
+-- Insert sample data
+INSERT INTO Employee (Id, Name, BasicPay, DOB, Dept) VALUES
+(1, 'John Smith', 50000.00, '1985-05-15', 'IT'),
+(2, 'Sarah Johnson', 65000.00, '1990-08-22', 'HR'),
+(3, 'Michael Brown', 45000.00, '1988-11-30', 'Finance'),
+(4, 'Emily Davis', 55000.00, '1992-03-10', 'Marketing'),
+(5, 'Robert Wilson', 60000.00, '1983-07-25', 'Operations');
+
+
+CREATE OR REPLACE FUNCTION generate_payslip(emp_id INT)
+RETURNS TABLE(
+    payslip_line TEXT
+) AS $$
+DECLARE
+    emp_record Employee%ROWTYPE;
+    da DECIMAL(10,2);
+    hra DECIMAL(10,2);
+    tax DECIMAL(10,2);
+    deductions DECIMAL(10,2);
+    net_salary DECIMAL(10,2);
+BEGIN
+    -- Get employee details
+    SELECT * INTO emp_record FROM Employee WHERE Id = emp_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Employee with ID % not found', emp_id;
+    END IF;
+    
+    -- Calculate components (assuming percentages)
+    da := emp_record.BasicPay * 0.12; -- 12% DA
+    hra := emp_record.BasicPay * 0.15; -- 15% HRA
+    tax := emp_record.BasicPay * 0.10; -- 10% TAX
+    deductions := emp_record.BasicPay * 0.05; -- 5% other deductions
+    
+    -- Calculate net salary
+    net_salary := emp_record.BasicPay + da + hra - tax - deductions;
+    
+    -- Return payslip as a result set
+    RETURN QUERY SELECT 'PAYSLIP FOR EMPLOYEE ID: ' || emp_id;
+    RETURN QUERY SELECT '--------------------------------';
+    RETURN QUERY SELECT 'Employee Name: ' || emp_record.Name;
+    RETURN QUERY SELECT 'Department: ' || emp_record.Dept;
+    RETURN QUERY SELECT 'Date of Birth: ' || emp_record.DOB;
+    RETURN QUERY SELECT '--------------------------------';
+    RETURN QUERY SELECT 'Basic Pay: ' || emp_record.BasicPay;
+    RETURN QUERY SELECT 'DA (12%): ' || da;
+    RETURN QUERY SELECT 'HRA (15%): ' || hra;
+    RETURN QUERY SELECT '--------------------------------';
+    RETURN QUERY SELECT 'Tax (10%): -' || tax;
+    RETURN QUERY SELECT 'Other Deductions (5%): -' || deductions;
+    RETURN QUERY SELECT '--------------------------------';
+    RETURN QUERY SELECT 'NET SALARY: ' || net_salary;
+    RETURN QUERY SELECT '--------------------------------';
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM generate_payslip(1);  -- Assuming employee with ID 1 exists
+============================================================================
+output:
+payslip_line
+-----------------------------------------
+PAYSLIP FOR EMPLOYEE ID: 1
+--------------------------------
+Employee Name: John Doe
+Department: IT
+Date of Birth: 1985-05-15
+--------------------------------
+Basic Pay: 50000.00
+DA (12%): 6000.00
+HRA (15%): 7500.00
+--------------------------------
+Tax (10%): -5000.00
+Other Deductions (5%): -2500.00
+--------------------------------
+NET SALARY: 56000.00
+--------------------------------
